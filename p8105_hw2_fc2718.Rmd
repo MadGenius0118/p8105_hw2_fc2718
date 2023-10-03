@@ -1,0 +1,23 @@
+---
+title: "p8105_hw2_fc2718"
+author: "Fangyi Chen"
+date: "2023-10-02"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, message = FALSE)
+```
+
+
+```{r load_libraries}
+library(tidyverse)
+library(readxl)
+```
+
+
+# Problem 1
+```{r}
+
+```
+
