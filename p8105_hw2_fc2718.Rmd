@@ -17,7 +17,152 @@ library(readxl)
 
 
 # Problem 1
-```{r}
+```{r loading Pols}
+pols_df = 
+  read_csv("data/fivethirtyeight_datasets/pols-month.csv") |> 
+  janitor::clean_names() |>
+  separate(mon, into =c("year", "month_num", "day"), sep="-", convert=TRUE) |> 
+  mutate(
+    president = recode(prez_gop,
+                           "0" ="dem",
+                           "1" ="gop",
+                           "2" = "gop")
+         ) |> 
+  select(-prez_dem, -prez_gop, -day)
+
+month_df = 
+  tibble(
+    month_num = 1:12,
+    month_abb = month.abb,
+    month = month.name
+  )
+clean_pols_df = left_join(pols_df, month_df, by="month_num") |> 
+  select(year, month, everything())
+```
+
+
+```{r loading snp}
+snp_df = 
+  read_csv("data/fivethirtyeight_datasets/snp.csv") |> 
+  janitor::clean_names() |> 
+  separate(date, into=c("month_num", "day", "year"), sep="/", convert=TRUE) |> 
+  arrange(year, month_num) |> 
+  select(year, month_num, close)
+clean_snp_df = left_join(snp_df, month_df, by="month_num") |> 
+  select(year, month, close)
 
 ```
+
+```{r loading unemployment}
+clean_unemploy_df = 
+  read_csv("data/fivethirtyeight_datasets/unemployment.csv")  |> 
+  pivot_longer(Jan:Dec, 
+               names_to = "month_abb",
+               values_to = "unemployment") |> 
+  left_join(x=_, y=month_df, by="month_abb") |> 
+  janitor::clean_names() |> 
+  select(year, month, unemployment)
+
+```
+
+```{r merging snp, pols and unemploy}
+merged_df = 
+  left_join(clean_pols_df, clean_snp_df) |> 
+  left_join(x=_, y=clean_unemploy_df)
+```
+
+
+# Problem 2
+```{r load and clean mr trash}
+mr_trash_df = 
+  readxl::read_excel("data/202207 Trash Wheel Collection Data.xlsx", 
+                     sheet = "Mr. Trash Wheel",
+                     range="A2:N550"
+                     ) |> 
+  janitor::clean_names() |> 
+  drop_na(dumpster) |> 
+  mutate(homes_powered = (weight_tons*500) / 30,
+         type = "mr", 
+         year=as.numeric(year)) 
+
+```
+
+```{r load and clean professor trash}
+pro_trash_df =  readxl::read_excel("data/202207 Trash Wheel Collection Data.xlsx", 
+                     sheet = "Professor Trash Wheel",
+                     range="A2:M97"
+                     ) |> 
+  janitor::clean_names() |> 
+  drop_na(dumpster) |> 
+  mutate(homes_powered = (weight_tons*500) / 30,
+         type = "professor",
+         year = as.numeric(year)) 
+
+```
+
+```{r load and clean Gwynnda}
+gwynnda_trash_df =  readxl::read_excel("data/202207 Trash Wheel Collection Data.xlsx", 
+                     sheet = "Professor Trash Wheel",
+                     range="A2:K110"
+                     ) |> 
+  janitor::clean_names() |> 
+  drop_na(dumpster) |> 
+  mutate(homes_powered = (weight_tons*500) / 30,
+         type ="gwynnda")
+
+```
+
+```{r combine trash df}
+combined_trash_df = 
+  bind_rows(mr_trash_df , pro_trash_df, gwynnda_trash_df)
+str(combined_trash_df)
+```
+
+```{r}
+summary(combined_trash_df)
+```
+
+There are some "NA" / missing values in some columns (e.g chip_bags,grocery_bags) when the type equals to "professor" and "gwynnda".
+The merged data has `r nrow(combined_trash_df)` records and `r ncol(combined_trash_df)` columns. The combined dataset describes trash collected by the Trash Wheel where the type of Trash Wheel was characterized in the `Type` column, including dumpster number, date of collection, amount of total litter, and litter type. For instance, in  `r combined_trash_df$month[1]`, `r combined_trash_df$year[1]`, `r combined_trash_df$type[1]`, `r combined_trash_df$dumpster[1]` collects `r combined_trash_df$weight_tons[1]` total weight of trash.  The total weight of trash collected by Professor Trash Wheel was `r sum(pro_trash_df$weight_tons)`, and total number of cigarette butts collected by Gwynnda in July of 2021 was `r filter(combined_trash_df, month == "July", year == 2021, type== "gwynnda") |> select(cigarette_butts) |> sum()`.
+
+
+# Problem 3
+```{r load and clean baseline dataset}
+baseline_df = 
+  read_csv("data/data_mci/MCI_baseline.csv", skip = 1) |> 
+  janitor::clean_names() |> 
+  mutate(sex = recode(sex, "1" = "Male", "0" = "Female"),
+         apoe4 = recode(apoe4, "1"= "carrier", "0" ="non-carrier"),
+) |> 
+
+  filter(age_at_onset > current_age | age_at_onset == ".")
+
+```
+
+Some important process in the import stage include encoding sex and APOE4 carrier status into string, and the removal of participants who have developed MCI at the beginning of the study. Important features are `id` representing the unique identifier of the subjects, `current age` referring to subjects' ages at the study baseline, `age_at_onset` denoted as age at the onset of MCI, `education` refers to the number of years of subjects' education. There are `r nrow(baseline_df)`participants who meet the inclusion criteria (no MCI at the baseline). Among them, `r filter(baseline_df, age_at_onset != '.') |> nrow()` develop MCI. The average baseline age is `r mean(baseline_df$current_age)`. `r filter(baseline_df, sex=="Female" & apoe4 =="carrier") |> nrow() / nrow(baseline_df) *100` % of the women in the study are APOE4 carriers. 
+
+
+```{r load and clean amyloid dataset}
+amyloid_df = 
+  read.csv("data/data_mci/mci_amyloid.csv", skip = 1)|> 
+  janitor::clean_names() |>
+  rename(id=study_id)
+
+```
+
+The `Amyloid dataset`consists of `r nrow(amyloid_df)` records and `r ncol(amyloid_df)` columns. Some critical features entail `study_id` which represents the unique identifier of individual, and several longitudinal measurements of amyloid 42/40 ratios. In order to perform the join, we also change the `study_id` to be `id` which was identical to baseline dataframe. 
+
+
+```{r combine baseline and amyloid}
+combined_mci = inner_join(baseline_df, amyloid_df, by="id")
+str(combined_mci)
+
+write_csv(combined_mci, "exported_combined_mci.csv")
+```
+
+As shown, there are `r nrow(amyloid_df) - nrow(combined_mci)` participants in amyloid dataset but not found in baseline dataset. Additionally, there are `r nrow(baseline_df) - nrow(combined_mci)` participants in baseline dataset but not found in amyloid dataset. 
+
+In total there are `r nrow(combined_mci)` participants and `r ncol(combined_mci)`  in the combined dataset. The columns include participant ids, demographic information (`sex`, `education in years`, `age the baseline`), as well as the measurements of amyloid 42/40 ratios at the baseline, and followed-up years after the baseline. 
+ˆ
+
 
