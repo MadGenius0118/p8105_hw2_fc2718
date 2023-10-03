@@ -126,11 +126,6 @@ There are some "NA" / missing values in some columns (e.g chip_bags,grocery_bags
 The merged data has `r nrow(combined_trash_df)` records and `r ncol(combined_trash_df)` columns. The combined dataset describes trash collected by the Trash Wheel between the year `r range(combined_trash_df$year)[1]` and `r range(combined_trash_df$year)[2]` , where the type of Trash Wheel was characterized in the `Type` column, including dumpster number, date of collection, amount of total litter, and litter type. For instance, in  `r combined_trash_df$month[1]`, `r combined_trash_df$year[1]`, `r combined_trash_df$type[1]`, `r combined_trash_df$dumpster[1]` collects `r combined_trash_df$weight_tons[1]` total weight of trash.  The total weight of trash collected by Professor Trash Wheel was `r sum(pro_trash_df$weight_tons)`, and total number of cigarette butts collected by Gwynnda in July of 2021 was `r filter(combined_trash_df, month == "July", year == 2021, type== "gwynnda") |> select(cigarette_butts) |> sum()`.
 
 
-```{r}
-range(combined_trash_df$year)
-```
-
-
 # Problem 3
 ```{r load and clean baseline dataset}
 baseline_df = 
